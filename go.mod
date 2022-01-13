@@ -1,4 +1,4 @@
-module bobcaygeon
+module github.com/carterpeel/bobcaygeon
 
 go 1.17
 
