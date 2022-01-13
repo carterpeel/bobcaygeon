@@ -2,8 +2,8 @@ package rtsp
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net"
 )
 
@@ -42,7 +42,7 @@ func (r *Server) Start(verbose bool) {
 	log.Printf("Starting RTSP server on port: %d\n", r.port)
 	tcpListen, err := net.Listen("tcp", fmt.Sprintf(":%d", r.port))
 	if err != nil {
-		log.Fatal("Error listening:", err.Error())
+		log.Errorln("Error listening:", err.Error())
 	}
 
 	defer tcpListen.Close()
@@ -53,7 +53,7 @@ func (r *Server) Start(verbose bool) {
 			// Listen for an incoming connection.
 			conn, err := tcpListen.Accept()
 			if err != nil {
-				log.Fatal("Error accepting: ", err.Error())
+				log.Errorln("Error accepting: ", err.Error())
 			}
 			go read(conn, r.handlers, verbose)
 		}
