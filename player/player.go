@@ -6,8 +6,8 @@ import (
 	"log"
 	"sync"
 
-	"github.com/hajimehoshi/oto"
 	"github.com/carterpeel/bobcaygeon/rtsp"
+	"github.com/hajimehoshi/oto"
 )
 
 // Player defines a player for outputting the data packets from the session
@@ -79,11 +79,12 @@ func (lp *LocalPlayer) GetTrack() Track {
 }
 
 func (lp *LocalPlayer) playStream(session *rtsp.Session) {
-	p, err := oto.NewPlayer(44100, 2, 2, 10000)
+	pctx, err := oto.NewContext(44100, 2, 2, 10000)
 	if err != nil {
 		log.Println("error initializing player", err)
 		return
 	}
+	p := pctx.NewPlayer()
 	decoder := GetCodec(session)
 	for d := range session.DataChan {
 		lp.volLock.RLock()

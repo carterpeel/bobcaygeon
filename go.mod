@@ -11,7 +11,6 @@ require (
 	github.com/hashicorp/raft v1.3.3
 	github.com/hashicorp/raft-boltdb v0.0.0-20211202195631-7d34b9fb3f42
 	github.com/maghul/alac v0.0.0-20161106215514-129591bceef4
-	github.com/nstehr/bobcaygeon v0.0.0-20200809191243-14a04064021c
 	github.com/pelletier/go-toml v1.9.4
 	github.com/rakyll/statik v0.1.7
 	github.com/sirupsen/logrus v1.8.1
@@ -40,5 +39,5 @@ require (
 	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 )
