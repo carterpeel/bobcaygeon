@@ -43,6 +43,7 @@ func (r *Server) Start(verbose bool) {
 	tcpListen, err := net.Listen("tcp", fmt.Sprintf(":%d", r.port))
 	if err != nil {
 		log.Errorln("Error listening:", err.Error())
+		return
 	}
 
 	defer tcpListen.Close()
@@ -54,6 +55,7 @@ func (r *Server) Start(verbose bool) {
 			conn, err := tcpListen.Accept()
 			if err != nil {
 				log.Errorln("Error accepting: ", err.Error())
+				return
 			}
 			go read(conn, r.handlers, verbose)
 		}
