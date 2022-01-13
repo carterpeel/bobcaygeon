@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/carterpeel/bobcaygeon/cluster"
+	"github.com/carterpeel/bobcaygeon/player"
+	"github.com/carterpeel/bobcaygeon/raop"
+	"github.com/carterpeel/bobcaygeon/rtsp"
 	"github.com/hajimehoshi/oto"
 	"github.com/hashicorp/memberlist"
-	"github.com/nstehr/bobcaygeon/cluster"
-	"github.com/nstehr/bobcaygeon/player"
-	"github.com/nstehr/bobcaygeon/raop"
-	"github.com/nstehr/bobcaygeon/rtsp"
 )
 
 // Player will forward data packets to member nodes

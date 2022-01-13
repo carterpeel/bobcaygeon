@@ -10,13 +10,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/carterpeel/bobcaygeon/api"
+	"github.com/carterpeel/bobcaygeon/cluster"
+	"github.com/carterpeel/bobcaygeon/player"
+	"github.com/carterpeel/bobcaygeon/player/forwarding"
+	"github.com/carterpeel/bobcaygeon/raop"
 	"github.com/grandcat/zeroconf"
 	"github.com/hashicorp/memberlist"
-	"github.com/nstehr/bobcaygeon/api"
-	"github.com/nstehr/bobcaygeon/cluster"
-	"github.com/nstehr/bobcaygeon/player"
-	"github.com/nstehr/bobcaygeon/player/forwarding"
-	"github.com/nstehr/bobcaygeon/raop"
 	"github.com/pelletier/go-toml"
 	"google.golang.org/grpc"
 

@@ -3,10 +3,10 @@ package api
 import (
 	"log"
 
+	"github.com/carterpeel/bobcaygeon/cluster"
+	"github.com/carterpeel/bobcaygeon/player/forwarding"
+	"github.com/carterpeel/bobcaygeon/raop"
 	"github.com/hashicorp/memberlist"
-	"github.com/nstehr/bobcaygeon/cluster"
-	"github.com/nstehr/bobcaygeon/player/forwarding"
-	"github.com/nstehr/bobcaygeon/raop"
 	"golang.org/x/net/context"
 )
 

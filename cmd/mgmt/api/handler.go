@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/nstehr/bobcaygeon/cmd/mgmt/service"
+	"github.com/carterpeel/bobcaygeon/cmd/mgmt/service"
 
 	context "golang.org/x/net/context"
 )

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nstehr/bobcaygeon/sdp"
+	"github.com/carterpeel/bobcaygeon/sdp"
 )
 
 const (

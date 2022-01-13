@@ -10,13 +10,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/carterpeel/bobcaygeon/cmd/mgmt/raft"
 	"github.com/grandcat/zeroconf"
-	"github.com/nstehr/bobcaygeon/cmd/mgmt/raft"
 
+	"github.com/carterpeel/bobcaygeon/cluster"
+	"github.com/carterpeel/bobcaygeon/cmd/mgmt/api"
 	petname "github.com/dustinkirkland/golang-petname"
 	"github.com/hashicorp/memberlist"
-	"github.com/nstehr/bobcaygeon/cluster"
-	"github.com/nstehr/bobcaygeon/cmd/mgmt/api"
 	toml "github.com/pelletier/go-toml"
 	"google.golang.org/grpc"
 )

@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"time"
 
+	speakerAPI "github.com/carterpeel/bobcaygeon/api"
+	"github.com/carterpeel/bobcaygeon/cluster"
+	"github.com/carterpeel/bobcaygeon/cmd/mgmt/api"
+	"github.com/carterpeel/bobcaygeon/cmd/mgmt/service"
+	"github.com/carterpeel/bobcaygeon/rtsp"
 	"github.com/hashicorp/memberlist"
-	speakerAPI "github.com/nstehr/bobcaygeon/api"
-	"github.com/nstehr/bobcaygeon/cluster"
-	"github.com/nstehr/bobcaygeon/cmd/mgmt/api"
-	"github.com/nstehr/bobcaygeon/cmd/mgmt/service"
-	"github.com/nstehr/bobcaygeon/rtsp"
 	"google.golang.org/grpc"
 )
 

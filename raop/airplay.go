@@ -11,10 +11,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/carterpeel/bobcaygeon/player"
+	"github.com/carterpeel/bobcaygeon/rtsp"
+	"github.com/carterpeel/bobcaygeon/sdp"
 	"github.com/grandcat/zeroconf"
-	"github.com/nstehr/bobcaygeon/player"
-	"github.com/nstehr/bobcaygeon/rtsp"
-	"github.com/nstehr/bobcaygeon/sdp"
 )
 
 // sets up the properties needed to make us discoverable as a airtunes service
