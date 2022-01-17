@@ -40,6 +40,10 @@ func (r *Server) Stop() {
 	r.done <- true
 }
 
+func (r *Server) ReqChan() chan *Request {
+	return r.reqChan
+}
+
 // Start creates listening socket for the RTSP connection
 func (r *Server) Start(verbose bool) {
 	log.Printf("Starting RTSP server on port: %d\n", r.port)
