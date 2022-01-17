@@ -106,9 +106,8 @@ func NewAirplayServer(port int, name string, player player.Player) *AirplayServe
 	return &as
 }
 
-//Start starts the airplay server, broadcasting on bonjour, ready to accept requests
+// Start starts the airplay server, broadcasting on bonjour, ready to accept requests
 func (a *AirplayServer) Start(verbose bool, advertise bool) {
-
 	if advertise {
 		a.initAdvertise()
 	}
@@ -125,7 +124,10 @@ func (a *AirplayServer) Start(verbose bool, advertise bool) {
 	rtspServer.AddHandler(rtsp.Flush, handlFlush)
 	rtspServer.AddHandler(rtsp.Teardown, a.handleTeardown)
 	rtspServer.Start(verbose)
+}
 
+func (a *AirplayServer) ReqChan() chan *rtsp.Request {
+	return a.rtspServer.ReqChan()
 }
 
 // ToggleAdvertise will toggle whether or not to advertise as an airplay service
