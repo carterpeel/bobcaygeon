@@ -1,6 +1,7 @@
 package rtsp
 
 import (
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -15,6 +16,7 @@ type Server struct {
 	port     int
 	handlers map[Method]RequestHandler
 	done     chan bool
+	reqChan  chan *Request
 }
 
 // NewServer instantiates a new RtspServer
@@ -23,6 +25,7 @@ func NewServer(port int) *Server {
 	server.port = port
 	server.done = make(chan bool)
 	server.handlers = make(map[Method]RequestHandler)
+	server.reqChan = make(chan *Request)
 	return &server
 }
 
@@ -48,7 +51,7 @@ func (r *Server) Start(verbose bool) {
 
 	defer tcpListen.Close()
 
-	//handle TCP connections
+	// Handle TCP connections.
 	go func() {
 		for {
 			// Listen for an incoming connection.
@@ -57,25 +60,28 @@ func (r *Server) Start(verbose bool) {
 				log.Errorln("Error accepting: ", err.Error())
 				return
 			}
-			go read(conn, r.handlers, verbose)
+			go r.read(conn, r.handlers, verbose)
 		}
 	}()
 
 	<-r.done
 }
 
-func read(conn net.Conn, handlers map[Method]RequestHandler, verbose bool) {
+func (r *Server) read(conn net.Conn, handlers map[Method]RequestHandler, verbose bool) {
 	defer conn.Close()
 	for {
 		request, err := readRequest(conn)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				log.Println("Client closed connection")
 			} else {
 				log.Println("Error reading data: ", err.Error())
 			}
 			return
 		}
+
+		req := *request
+		r.reqChan <- &req
 
 		if verbose {
 			log.Println("Received Request")
