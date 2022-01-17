@@ -126,10 +126,6 @@ func (a *AirplayServer) Start(verbose bool, advertise bool) {
 	rtspServer.Start(verbose)
 }
 
-func (a *AirplayServer) ReqChan() chan *rtsp.Request {
-	return a.rtspServer.ReqChan()
-}
-
 // ToggleAdvertise will toggle whether or not to advertise as an airplay service
 func (a *AirplayServer) ToggleAdvertise(shouldAdvertise bool) {
 	if !shouldAdvertise {
