@@ -102,7 +102,7 @@ func (sm *sessionMap) getSessions() []*airplaySession {
 
 // NewAirplayServer instantiates a new airplayer server
 func NewAirplayServer(port int, name string, player player.Player) *AirplayServer {
-	as := AirplayServer{port: port, name: name, player: player, sessions: newSessionMap()}
+	as := AirplayServer{port: port, name: name, player: player, sessions: newSessionMap(), rtspServer: rtsp.NewServer(port)}
 	return &as
 }
 
@@ -112,18 +112,14 @@ func (a *AirplayServer) Start(verbose bool, advertise bool) {
 		a.initAdvertise()
 	}
 
-	rtspServer := rtsp.NewServer(a.port)
-
-	a.rtspServer = rtspServer
-
-	rtspServer.AddHandler(rtsp.Options, handleOptions)
-	rtspServer.AddHandler(rtsp.Announce, a.handleAnnounce)
-	rtspServer.AddHandler(rtsp.Setup, a.handleSetup)
-	rtspServer.AddHandler(rtsp.Record, a.handleRecord)
-	rtspServer.AddHandler(rtsp.Set_Parameter, a.handlSetParameter)
-	rtspServer.AddHandler(rtsp.Flush, handlFlush)
-	rtspServer.AddHandler(rtsp.Teardown, a.handleTeardown)
-	rtspServer.Start(verbose)
+	a.rtspServer.AddHandler(rtsp.Options, handleOptions)
+	a.rtspServer.AddHandler(rtsp.Announce, a.handleAnnounce)
+	a.rtspServer.AddHandler(rtsp.Setup, a.handleSetup)
+	a.rtspServer.AddHandler(rtsp.Record, a.handleRecord)
+	a.rtspServer.AddHandler(rtsp.Set_Parameter, a.handlSetParameter)
+	a.rtspServer.AddHandler(rtsp.Flush, handlFlush)
+	a.rtspServer.AddHandler(rtsp.Teardown, a.handleTeardown)
+	a.rtspServer.Start(verbose)
 }
 
 func (a *AirplayServer) ReqChan() chan *rtsp.Request {
