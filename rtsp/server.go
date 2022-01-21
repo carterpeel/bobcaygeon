@@ -21,12 +21,12 @@ type Server struct {
 
 // NewServer instantiates a new RtspServer
 func NewServer(port int) *Server {
-	server := Server{}
-	server.port = port
-	server.done = make(chan bool)
-	server.handlers = make(map[Method]RequestHandler)
-	server.reqChan = make(chan *Request)
-	return &server
+	return &Server{
+		port:     port,
+		done:     make(chan bool),
+		handlers: make(map[Method]RequestHandler),
+		reqChan:  make(chan *Request),
+	}
 }
 
 // AddHandler registers a handler for a given RTSP method
@@ -103,7 +103,6 @@ func (r *Server) read(conn net.Conn, handlers map[Method]RequestHandler, verbose
 			log.Println("Outbound Response")
 			log.Println(resp.String())
 		}
-		writeResponse(conn, resp)
-
+		_, _ = writeResponse(conn, resp)
 	}
 }

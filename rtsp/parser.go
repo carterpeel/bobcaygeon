@@ -3,6 +3,7 @@ package rtsp
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 
 // https://tools.ietf.org/html/rfc2326#page-19
 func readRequest(r io.Reader) (*Request, error) {
-
 	req := new(Request)
 	buf := bufio.NewReader(r)
 	headers := make(map[string]string)
@@ -25,13 +25,13 @@ func readRequest(r io.Reader) (*Request, error) {
 	requestLineParts := strings.Split(requestLine, " ")
 
 	if len(requestLineParts) != 3 {
-		return nil, fmt.Errorf("Improperly formatted request line: %s", requestLine)
+		return nil, fmt.Errorf("improperly formatted request line: %s", requestLine)
 	}
 
 	method, err := getMethod(requestLineParts[0])
 
 	if err != nil {
-		return nil, fmt.Errorf("Method does exist in RTSP protocol: %s", requestLineParts[0])
+		return nil, fmt.Errorf("method does exist in RTSP protocol: %s", requestLineParts[0])
 	}
 
 	req.Method = method
@@ -52,7 +52,7 @@ func readRequest(r io.Reader) (*Request, error) {
 		}
 		headerParts := strings.Split(headerField, ":")
 		if len(headerParts) < 2 {
-			return nil, fmt.Errorf("Inproper header: %s", headerField)
+			return nil, fmt.Errorf("improper header: %s", headerField)
 		}
 		headers[strings.TrimSpace(headerParts[0])] = strings.TrimSpace(headerParts[1])
 	}
@@ -66,10 +66,14 @@ func readRequest(r io.Reader) (*Request, error) {
 
 	// now read the body
 	length, _ := strconv.Atoi(contentLength)
-	bodyBuf := make([]byte, length)
+	req.Body = make([]byte, length)
+
 	// makes sure we read the full length of the content
-	io.ReadFull(buf, bodyBuf)
-	req.Body = bodyBuf
+	if _, err := io.ReadFull(buf, req.Body); err != nil {
+		if !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("error reading full body: %w", err)
+		}
+	}
 
 	return req, nil
 }
@@ -83,7 +87,6 @@ func writeResponse(w io.Writer, resp *Response) (n int, err error) {
 	}
 	if len(resp.Body) > 0 {
 		buffer.WriteString(fmt.Sprintf("%s: %d\r\n", "Content-Length", len(resp.Body)))
-
 	}
 	buffer.WriteString("\r\n")
 

@@ -1,6 +1,7 @@
 package rtsp
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -35,12 +36,16 @@ type Session struct {
 	LocalPorts  PortSet
 	dataConn    net.Conn
 	DataChan    chan []byte
-	stopChan    chan (struct{})
+	stopChan    chan struct{}
+	buf         *bytes.Buffer
+
+	sendBuf    []byte
+	packetChan chan []byte
 }
 
 // NewSession instantiates a new Session
 func NewSession(description *sdp.SessionDescription, decrypter Decrypter) *Session {
-	return &Session{Description: description, decrypter: decrypter, DataChan: make(chan []byte, 1000)}
+	return &Session{Description: description, decrypter: decrypter, DataChan: make(chan []byte, 1000), buf: bytes.NewBuffer(make([]byte, readBuffer)), sendBuf: make([]byte, 0), packetChan: make(chan []byte)}
 }
 
 // InitReceive initializes the session to for receiving
@@ -78,29 +83,26 @@ func (s *Session) StartReceiving() error {
 	// start listening for audio data
 	log.Println("Session started.  Listening for audio packets")
 	go func(conn *net.UDPConn) {
-		buf := make([]byte, readBuffer)
 		for {
-			n, _, err := conn.ReadFromUDP(buf)
+			n, _, err := conn.ReadFromUDP(s.buf.Bytes())
 			if err != nil {
 				log.Println("Error reading data from socket: " + err.Error())
 				close(s.DataChan)
 				conn = nil
 				break
 			}
-			packet := buf[:n]
+			packet := s.buf.Bytes()[:n]
 			// send the data to the decoder
-			d := packet
 			if s.decrypter != nil {
-				d, err = s.decrypter.Decode(packet)
+				packet, err = s.decrypter.Decode(packet)
+				if err != nil {
+					log.Printf("Error decrypting packet: %v\n", err)
+					return
+				}
 			}
-			if err != nil {
-				log.Println("Problem decoding packet", err)
-				continue
-			}
-			// once decoded, we can pass it along to be played
-			send := make([]byte, len(d))
-			copy(send, d)
-			s.DataChan <- send
+			s.sendBuf = make([]byte, len(packet))
+			copy(s.sendBuf, packet)
+			s.DataChan <- s.sendBuf
 		}
 		log.Println("Signalling Session is closed")
 		if s.stopChan != nil {
@@ -112,7 +114,6 @@ func (s *Session) StartReceiving() error {
 
 // StartSending starts a session for sending data
 func (s *Session) StartSending() error {
-
 	conn, err := net.Dial("udp", fmt.Sprintf("%s:%d", s.RemotePorts.Address, s.RemotePorts.Data))
 	if err != nil {
 		return err

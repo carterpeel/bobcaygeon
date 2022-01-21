@@ -17,14 +17,15 @@ import (
 	"github.com/grandcat/zeroconf"
 )
 
-// sets up the properties needed to make us discoverable as a airtunes service
+// sets up the properties needed to make us discoverable as an airtunes service
 // https://github.com/fgp/AirReceiver/blob/STABLE_1_X/src/main/java/org/phlo/AirReceiver/AirReceiver.java#L88
 // https://nto.github.io/AirPlay.html#audio
 const (
-	airTunesServiceType = "_raop._tcp"
-	domain              = "local."
-	localTimingPort     = 6002
-	localControlPort    = 6001
+	airTunesServiceType  = "_raop._tcp"
+	domain               = "local."
+	localTimingPort      = 6002
+	localControlPort     = 6001
+	headerTextParameters = "text/parameters"
 )
 
 var airtunesServiceProperties = []string{"txtvers=1",
@@ -138,7 +139,6 @@ func (a *AirplayServer) ToggleAdvertise(shouldAdvertise bool) {
 		log.Printf("Shutting down broadcasting of %s\n", a.name)
 		a.zerconfServer.Shutdown()
 		a.zerconfServer = nil
-
 	} else {
 		if a.zerconfServer != nil {
 			log.Println("Currently advertising, ignoring turn on advertise request")
@@ -148,10 +148,10 @@ func (a *AirplayServer) ToggleAdvertise(shouldAdvertise bool) {
 	}
 }
 
-//ChangeName will change the name of the broadcast service
+// ChangeName will change the name of the broadcast service
 func (a *AirplayServer) ChangeName(newName string) error {
 	if strings.TrimSpace(newName) == "" {
-		return errors.New("New name must be non-empty")
+		return errors.New("new name must be non-empty")
 	}
 	a.name = strings.TrimSpace(newName)
 	// if we are advertising, stop the zeroconf server and start it so it
@@ -167,7 +167,7 @@ func (a *AirplayServer) ChangeName(newName string) error {
 func (a *AirplayServer) initAdvertise() {
 	// as per the protocol, the mac address makes up part of the service name
 	macAddr := getMacAddr().String()
-	macAddr = strings.Replace(macAddr, ":", "", -1)
+	macAddr = strings.ReplaceAll(macAddr, ":", "")
 
 	serviceName := fmt.Sprintf("%s@%s", macAddr, a.name)
 
@@ -229,7 +229,11 @@ func (a *AirplayServer) handleAnnounce(req *rtsp.Request, resp *rtsp.Response, l
 				resp.Status = rtsp.InternalServerError
 				return
 			}
-			decoder = NewAesDecrypter(aesKey, aesIv)
+			if decoder = NewAesDecrypter(aesKey, aesIv); err != nil {
+				log.Printf("error creating new AES decryption object: %v\n", err)
+				resp.Status = rtsp.InternalServerError
+				return
+			}
 		}
 		// create the dacp client for player control and then attach to the stream
 		dacpID := req.Headers["DACP-ID"]
@@ -238,7 +242,7 @@ func (a *AirplayServer) handleAnnounce(req *rtsp.Request, resp *rtsp.Response, l
 		s := rtsp.NewSession(description, decoder)
 		err = s.InitReceive()
 		if err != nil {
-			log.Println("error intializing data receiving", err)
+			log.Println("error initializing data receiving", err)
 			resp.Status = rtsp.InternalServerError
 			return
 		}
@@ -311,7 +315,7 @@ func (a *AirplayServer) handlSetParameter(req *rtsp.Request, resp *rtsp.Response
 		a.player.SetTrack(album, artist, title)
 	} else if req.Headers["Content-Type"] == "image/jpeg" {
 		a.player.SetAlbumArt(req.Body)
-	} else if req.Headers["Content-Type"] == "text/parameters" {
+	} else if req.Headers["Content-Type"] == headerTextParameters {
 		body := string(req.Body)
 		if strings.Contains(body, "volume") {
 			volStr := strings.TrimSpace(strings.Split(body, "volume:")[1])
@@ -333,7 +337,6 @@ func (a *AirplayServer) handlSetParameter(req *rtsp.Request, resp *rtsp.Response
 			}
 			vol = normalizeVolume(vol)
 			a.player.SetVolume(vol)
-
 		}
 	}
 	resp.Status = rtsp.Ok
@@ -364,7 +367,7 @@ func (a *AirplayServer) closeSession(remoteAddress string) {
 	if as != nil {
 		// stops the client from sending data
 		if as.client != nil {
-			as.client.Stop()
+			_ = as.client.Stop()
 		}
 		// closes the actual listening socket
 		as.session.Close(doneChan)
@@ -397,7 +400,7 @@ func getMacAddr() (addr net.HardwareAddr) {
 	return
 }
 
-// normalizeVolume maps airplay volume values to a range betweeon 0 and 1
+// normalizeVolume maps airplay volume values to a range between 0 and 1
 func normalizeVolume(volume float64) float64 {
 	// according to: https://nto.github.io/AirPlay.html#audio
 	// -144 is mute

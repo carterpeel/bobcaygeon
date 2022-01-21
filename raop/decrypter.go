@@ -22,16 +22,7 @@ func (d *AesDecrypter) Decode(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	mode := cipher.NewCBCDecrypter(block, d.aesIv)
-	audio := data[12:]
-	todec := audio
-	for len(todec) >= aes.BlockSize {
-		mode.CryptBlocks(todec[:aes.BlockSize], todec[:aes.BlockSize])
-		todec = todec[aes.BlockSize:]
-	}
-
-	send := make([]byte, len(audio))
-	copy(send, audio)
-
-	return send, nil
+	todec := data[12:][:len(data[12:])-(len(data[12:])%aes.BlockSize)]
+	cipher.NewCBCDecrypter(block, d.aesIv).CryptBlocks(todec, todec)
+	return data[12:], nil
 }
