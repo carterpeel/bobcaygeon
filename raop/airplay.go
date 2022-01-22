@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+	"tailscale.com/net/interfaces"
 
 	"github.com/carterpeel/bobcaygeon/player"
 	"github.com/carterpeel/bobcaygeon/rtsp"
@@ -101,7 +102,7 @@ func (sm *sessionMap) getSessions() []*airplaySession {
 	return sessions
 }
 
-// NewAirplayServer instantiates a new airplayer server
+// NewAirplayServer instantiates a new Airplay2 server
 func NewAirplayServer(port int, name string, player player.Player) *AirplayServer {
 	as := AirplayServer{port: port, name: name, player: player, sessions: newSessionMap()}
 	return &as
@@ -171,9 +172,22 @@ func (a *AirplayServer) initAdvertise() {
 
 	serviceName := fmt.Sprintf("%s@%s", macAddr, a.name)
 
-	server, err := zeroconf.Register(serviceName, airTunesServiceType, domain, a.port, airtunesServiceProperties, nil)
+	ifaceIndex, err := interfaces.DefaultRouteInterfaceIndex()
 	if err != nil {
-		log.Fatal("couldn't start zeroconf: ", err)
+		log.Errorf("Error getting default interface index: %v\n", err)
+		return
+	}
+
+	iface, err := net.InterfaceByIndex(ifaceIndex)
+	if err != nil {
+		log.Errorf("Error getting interface by index '%d': %v\n", ifaceIndex, err)
+		return
+	}
+
+	server, err := zeroconf.Register(serviceName, airTunesServiceType, domain, a.port, airtunesServiceProperties, []net.Interface{*iface})
+	if err != nil {
+		log.Errorf("Error registering zeroconf service: %v\n", err)
+		return
 	}
 
 	log.Println("Published service:")
