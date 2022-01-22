@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
+	"tailscale.com/net/interfaces"
 )
 
 // RequestHandler callback function that gets invoked when a request is received
@@ -43,7 +44,15 @@ func (r *Server) Stop() {
 // Start creates listening socket for the RTSP connection
 func (r *Server) Start(verbose bool) {
 	log.Printf("Starting RTSP server on port: %d\n", r.port)
-	tcpListen, err := net.Listen("tcp", fmt.Sprintf(":%d", r.port))
+
+	// Get the default outbound interface address
+	_, myIP, ok := interfaces.LikelyHomeRouterIP()
+	if !ok {
+		log.Errorf("Error getting local outbound IP address: ok=%v\n", ok)
+		return
+	}
+
+	tcpListen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", myIP.String(), r.port))
 	if err != nil {
 		log.Errorln("Error listening:", err.Error())
 		return
