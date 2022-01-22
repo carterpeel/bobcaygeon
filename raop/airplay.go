@@ -180,7 +180,7 @@ func (a *AirplayServer) initAdvertise() {
 
 	iface, err := net.InterfaceByName(ifaceName)
 	if err != nil {
-		log.Errorf("Error getting interface by name '%d': %v\n", ifaceName, err)
+		log.Errorf("Error getting interface by name '%s': %v\n", ifaceName, err)
 		return
 	}
 
