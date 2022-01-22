@@ -172,15 +172,15 @@ func (a *AirplayServer) initAdvertise() {
 
 	serviceName := fmt.Sprintf("%s@%s", macAddr, a.name)
 
-	ifaceIndex, err := interfaces.DefaultRouteInterfaceIndex()
+	ifaceName, err := interfaces.DefaultRouteInterface()
 	if err != nil {
 		log.Errorf("Error getting default interface index: %v\n", err)
 		return
 	}
 
-	iface, err := net.InterfaceByIndex(ifaceIndex)
+	iface, err := net.InterfaceByName(ifaceName)
 	if err != nil {
-		log.Errorf("Error getting interface by index '%d': %v\n", ifaceIndex, err)
+		log.Errorf("Error getting interface by name '%d': %v\n", ifaceName, err)
 		return
 	}
 
