@@ -1,13 +1,11 @@
 package rtsp
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
-	"os"
 	"tailscale.com/net/interfaces"
 )
 
@@ -81,31 +79,6 @@ func (r *Server) Start(verbose bool) {
 
 func (r *Server) read(conn net.Conn, handlers map[Method]RequestHandler, verbose bool) {
 	defer conn.Close()
-
-	requestDumpFile, err := os.OpenFile(".handshakedata-requests", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
-	if err != nil {
-		log.Panicf("Error opening request dumpfile: %v\n", err)
-	}
-	defer requestDumpFile.Close()
-	requestDumpFile.Truncate(0)
-	requestDumpFile.Seek(0, 0)
-
-	responseDumpFile, err := os.OpenFile(".handshakedata-responses", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
-	if err != nil {
-		log.Panicf("Error opening response dumpfile: %v\n", err)
-	}
-	defer responseDumpFile.Close()
-	responseDumpFile.Truncate(0)
-	responseDumpFile.Seek(0, 0)
-
-	combinedFile, err := os.OpenFile(".handshakedata-combined", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0777)
-	if err != nil {
-		log.Panicf("Error opening combined handshake dumpfile: %v\n", err)
-	}
-	defer combinedFile.Close()
-	combinedFile.Truncate(0)
-	combinedFile.Seek(0, 0)
-
 	for {
 		request, err := readRequest(conn)
 		if err != nil {
@@ -116,8 +89,6 @@ func (r *Server) read(conn net.Conn, handlers map[Method]RequestHandler, verbose
 			}
 			return
 		}
-
-		_, _ = requestDumpFile.Write(buildRequestDump(request))
 
 		if verbose {
 			log.Println("Received Request")
@@ -143,33 +114,6 @@ func (r *Server) read(conn net.Conn, handlers map[Method]RequestHandler, verbose
 			log.Println(resp.String())
 		}
 
-		_, _ = responseDumpFile.Write(buildResponseDump(resp))
-		_, _ = combinedFile.Write(buildRequestDump(request))
-		_, _ = combinedFile.Write(buildResponseDump(resp))
-
 		_, _ = writeResponse(conn, resp)
 	}
-}
-
-func buildRequestDump(req *Request) []byte {
-	buf := new(bytes.Buffer)
-	buf.WriteString("--------BEGIN REQUEST DUMP------\n")
-	buf.WriteString(fmt.Sprintf("Request URI: %s\n", req.RequestURI))
-	buf.WriteString(fmt.Sprintf("Request Method: %s\n", req.Method.String()))
-	buf.WriteString(fmt.Sprintf("Headers: %v\n", req.Headers))
-	buf.WriteString(fmt.Sprintf("Protocol: %s\n", req.protocol))
-	buf.WriteString(fmt.Sprintf("Body: %s\n", string(req.Body)))
-	buf.WriteString("------END REQUEST DUMP------\n\n")
-	return buf.Bytes()
-}
-
-func buildResponseDump(resp *Response) []byte {
-	buf := new(bytes.Buffer)
-	buf.WriteString("------BEGIN RESPONSE DUMP------\n")
-	buf.WriteString(fmt.Sprintf("Status: %s\n", resp.Status.String()))
-	buf.WriteString(fmt.Sprintf("Headers: %v\n", resp.Headers))
-	buf.WriteString(fmt.Sprintf("Protocol: %s\n", resp.protocol))
-	buf.WriteString(fmt.Sprintf("Body: %s\n ", string(resp.Body)))
-	buf.WriteString("------END RESPONSE DUMP------\n\n")
-	return buf.Bytes()
 }
