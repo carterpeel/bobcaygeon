@@ -5,12 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
+	"log"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
-	"tailscale.com/net/interfaces"
 
 	"github.com/carterpeel/bobcaygeon/player"
 	"github.com/carterpeel/bobcaygeon/rtsp"
@@ -18,15 +17,14 @@ import (
 	"github.com/grandcat/zeroconf"
 )
 
-// sets up the properties needed to make us discoverable as an airtunes service
+// sets up the properties needed to make us discoverable as a airtunes service
 // https://github.com/fgp/AirReceiver/blob/STABLE_1_X/src/main/java/org/phlo/AirReceiver/AirReceiver.java#L88
 // https://nto.github.io/AirPlay.html#audio
 const (
-	airTunesServiceType  = "_raop._tcp"
-	domain               = "local."
-	localTimingPort      = 6002
-	localControlPort     = 6001
-	headerTextParameters = "text/parameters"
+	airTunesServiceType = "_raop._tcp"
+	domain              = "local."
+	localTimingPort     = 6002
+	localControlPort    = 6001
 )
 
 var airtunesServiceProperties = []string{"txtvers=1",
@@ -51,6 +49,25 @@ type AirplayServer struct {
 	zerconfServer *zeroconf.Server
 	sessions      *sessionMap
 	player        player.Player
+
+	paramChan chan interface{}
+}
+
+// Parameter types
+type (
+	ParamVolume    float64
+	ParamTrackInfo struct {
+		Album  string
+		Artist string
+		Title  string
+	}
+	ParamAlbumArt []byte
+	ParamMuted    bool
+)
+
+// ParamChan returns a pointer to the non-exported field (channels are pointers under the hood)
+func (a *AirplayServer) ParamChan() chan interface{} {
+	return a.paramChan
 }
 
 type airplaySession struct {
@@ -102,9 +119,9 @@ func (sm *sessionMap) getSessions() []*airplaySession {
 	return sessions
 }
 
-// NewAirplayServer instantiates a new Airplay2 server
+// NewAirplayServer instantiates a new airplayer server
 func NewAirplayServer(port int, name string, player player.Player) *AirplayServer {
-	as := AirplayServer{port: port, name: name, player: player, sessions: newSessionMap()}
+	as := AirplayServer{port: port, name: name, player: player, sessions: newSessionMap(), paramChan: make(chan interface{})}
 	return &as
 }
 
@@ -140,6 +157,7 @@ func (a *AirplayServer) ToggleAdvertise(shouldAdvertise bool) {
 		log.Printf("Shutting down broadcasting of %s\n", a.name)
 		a.zerconfServer.Shutdown()
 		a.zerconfServer = nil
+
 	} else {
 		if a.zerconfServer != nil {
 			log.Println("Currently advertising, ignoring turn on advertise request")
@@ -149,10 +167,10 @@ func (a *AirplayServer) ToggleAdvertise(shouldAdvertise bool) {
 	}
 }
 
-// ChangeName will change the name of the broadcast service
+//ChangeName will change the name of the broadcast service
 func (a *AirplayServer) ChangeName(newName string) error {
 	if strings.TrimSpace(newName) == "" {
-		return errors.New("new name must be non-empty")
+		return errors.New("New name must be non-empty")
 	}
 	a.name = strings.TrimSpace(newName)
 	// if we are advertising, stop the zeroconf server and start it so it
@@ -168,26 +186,13 @@ func (a *AirplayServer) ChangeName(newName string) error {
 func (a *AirplayServer) initAdvertise() {
 	// as per the protocol, the mac address makes up part of the service name
 	macAddr := getMacAddr().String()
-	macAddr = strings.ReplaceAll(macAddr, ":", "")
+	macAddr = strings.Replace(macAddr, ":", "", -1)
 
 	serviceName := fmt.Sprintf("%s@%s", macAddr, a.name)
 
-	ifaceName, err := interfaces.DefaultRouteInterface()
+	server, err := zeroconf.Register(serviceName, airTunesServiceType, domain, a.port, airtunesServiceProperties, nil)
 	if err != nil {
-		log.Errorf("Error getting default interface index: %v\n", err)
-		return
-	}
-
-	iface, err := net.InterfaceByName(ifaceName)
-	if err != nil {
-		log.Errorf("Error getting interface by name '%s': %v\n", ifaceName, err)
-		return
-	}
-
-	server, err := zeroconf.Register(serviceName, airTunesServiceType, domain, a.port, airtunesServiceProperties, []net.Interface{*iface})
-	if err != nil {
-		log.Errorf("Error registering zeroconf service: %v\n", err)
-		return
+		log.Fatal("couldn't start zeroconf: ", err)
 	}
 
 	log.Println("Published service:")
@@ -256,7 +261,7 @@ func (a *AirplayServer) handleAnnounce(req *rtsp.Request, resp *rtsp.Response, l
 		s := rtsp.NewSession(description, decoder)
 		err = s.InitReceive()
 		if err != nil {
-			log.Println("error initializing data receiving", err)
+			log.Println("error intializing data receiving", err)
 			resp.Status = rtsp.InternalServerError
 			return
 		}
@@ -327,9 +332,16 @@ func (a *AirplayServer) handlSetParameter(req *rtsp.Request, resp *rtsp.Response
 			title = val.(string)
 		}
 		a.player.SetTrack(album, artist, title)
+		a.paramChan <- ParamTrackInfo{
+			Album:  album,
+			Artist: artist,
+			Title:  title,
+		}
 	} else if req.Headers["Content-Type"] == "image/jpeg" {
 		a.player.SetAlbumArt(req.Body)
-	} else if req.Headers["Content-Type"] == headerTextParameters {
+		a.paramChan <- ParamAlbumArt(req.Body)
+
+	} else if req.Headers["Content-Type"] == "text/parameters" {
 		body := string(req.Body)
 		if strings.Contains(body, "volume") {
 			volStr := strings.TrimSpace(strings.Split(body, "volume:")[1])
@@ -342,15 +354,19 @@ func (a *AirplayServer) handlSetParameter(req *rtsp.Request, resp *rtsp.Response
 			if val, ok := req.Headers["X-BCG-Muted"]; ok {
 				if val == "muted" {
 					a.player.SetMute(true)
+					a.paramChan <- ParamMuted(true)
 					// muting is enough, we don't need to bother
 					// going on to set the actual volume
 					resp.Status = rtsp.Ok
 					return
 				}
 				a.player.SetMute(false)
+				a.paramChan <- ParamMuted(false)
 			}
+			a.paramChan <- ParamVolume(vol)
 			vol = normalizeVolume(vol)
 			a.player.SetVolume(vol)
+
 		}
 	}
 	resp.Status = rtsp.Ok
@@ -381,7 +397,7 @@ func (a *AirplayServer) closeSession(remoteAddress string) {
 	if as != nil {
 		// stops the client from sending data
 		if as.client != nil {
-			_ = as.client.Stop()
+			as.client.Stop()
 		}
 		// closes the actual listening socket
 		as.session.Close(doneChan)
@@ -414,7 +430,7 @@ func getMacAddr() (addr net.HardwareAddr) {
 	return
 }
 
-// normalizeVolume maps airplay volume values to a range between 0 and 1
+// normalizeVolume maps airplay volume values to a range betweeon 0 and 1
 func normalizeVolume(volume float64) float64 {
 	// according to: https://nto.github.io/AirPlay.html#audio
 	// -144 is mute
