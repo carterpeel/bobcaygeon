@@ -49,8 +49,6 @@ type AirplayServer struct {
 	zerconfServer *zeroconf.Server
 	sessions      *sessionMap
 	player        player.Player
-
-	paramChan chan interface{}
 }
 
 // Parameter types
@@ -64,11 +62,6 @@ type (
 	ParamAlbumArt []byte
 	ParamMuted    bool
 )
-
-// ParamChan returns a pointer to the non-exported field (channels are pointers under the hood)
-func (a *AirplayServer) ParamChan() chan interface{} {
-	return a.paramChan
-}
 
 type airplaySession struct {
 	session *rtsp.Session
@@ -121,7 +114,7 @@ func (sm *sessionMap) getSessions() []*airplaySession {
 
 // NewAirplayServer instantiates a new airplayer server
 func NewAirplayServer(port int, name string, player player.Player) *AirplayServer {
-	as := AirplayServer{port: port, name: name, player: player, sessions: newSessionMap(), paramChan: make(chan interface{})}
+	as := AirplayServer{port: port, name: name, player: player, sessions: newSessionMap()}
 	return &as
 }
 
@@ -332,15 +325,8 @@ func (a *AirplayServer) handlSetParameter(req *rtsp.Request, resp *rtsp.Response
 			title = val.(string)
 		}
 		a.player.SetTrack(album, artist, title)
-		a.paramChan <- ParamTrackInfo{
-			Album:  album,
-			Artist: artist,
-			Title:  title,
-		}
 	} else if req.Headers["Content-Type"] == "image/jpeg" {
 		a.player.SetAlbumArt(req.Body)
-		a.paramChan <- ParamAlbumArt(req.Body)
-
 	} else if req.Headers["Content-Type"] == "text/parameters" {
 		body := string(req.Body)
 		if strings.Contains(body, "volume") {
@@ -354,18 +340,14 @@ func (a *AirplayServer) handlSetParameter(req *rtsp.Request, resp *rtsp.Response
 			if val, ok := req.Headers["X-BCG-Muted"]; ok {
 				if val == "muted" {
 					a.player.SetMute(true)
-					a.paramChan <- ParamMuted(true)
 					// muting is enough, we don't need to bother
 					// going on to set the actual volume
 					resp.Status = rtsp.Ok
 					return
 				}
 				a.player.SetMute(false)
-				a.paramChan <- ParamMuted(false)
 			}
-			a.paramChan <- ParamVolume(vol)
-			vol = normalizeVolume(vol)
-			a.player.SetVolume(vol)
+			a.player.SetVolume(normalizeVolume(vol))
 
 		}
 	}
