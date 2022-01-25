@@ -3,6 +3,8 @@ package rtsp
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/text/language"
+	"golang.org/x/text/search"
 	"strings"
 )
 
@@ -38,7 +40,9 @@ func (r *Request) String() string {
 	for k, v := range r.Headers {
 		buffer.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
 	}
-	buffer.WriteString(fmt.Sprintf("Body:\r\n%s", r.Body))
+	if contentType, ok := r.Headers["Content-Type"]; ok && !fastSearch(contentType, "image") {
+		buffer.WriteString(fmt.Sprintf("Body:\r\n%s", r.Body))
+	}
 	return buffer.String()
 }
 
@@ -136,4 +140,13 @@ func getStatus(status int) (Status, error) {
 		return -1, fmt.Errorf("Not valid status: %d", status)
 	}
 	return s, nil
+}
+
+func fastSearch(str string, substr string) bool {
+	m := search.New(language.English, search.IgnoreCase)
+	start, _ := m.IndexString(str, substr)
+	if start == -1 {
+		return false
+	}
+	return true
 }
