@@ -35,25 +35,38 @@ func NewRequest() *Request {
 
 func (r *Request) String() string {
 	var buffer bytes.Buffer
-	buffer.WriteString(fmt.Sprintf("Protocol: %s\r\nMethod: %s\r\nRequest URI: %s\r\n", r.protocol, r.Method.String(), r.RequestURI))
-	buffer.WriteString("Headers:\r\n")
+	buffer.WriteString(fmt.Sprintf("Protocol: %s\nMethod: %s\nRequest URI: %s\n", r.protocol, r.Method.String(), r.RequestURI))
+	buffer.WriteString("Headers:\n")
 	for k, v := range r.Headers {
-		buffer.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+		buffer.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 	}
-	if contentType, ok := r.Headers["Content-Type"]; ok && !fastSearch(contentType, "image") {
-		buffer.WriteString(fmt.Sprintf("Body:\r\n%s", r.Body))
+	if contentType, ok := r.Headers["Content-Type"]; ok {
+		if fastContains(contentType, "image") {
+			return buffer.String()
+		} else if fastContains(contentType, "x-dmap-tagged") {
+			return buffer.String()
+		}
+		buffer.WriteString(fmt.Sprintf("Body:\n%s", r.Body))
 	}
 	return buffer.String()
 }
 
 func (r *Response) String() string {
 	var buffer bytes.Buffer
-	buffer.WriteString(fmt.Sprintf("Protocol: %s\r\nStatus: %s\r\n", r.protocol, r.Status.String()))
-	buffer.WriteString("Headers:\r\n")
+	buffer.WriteString(fmt.Sprintf("Protocol: %s\nStatus: %s\n", r.protocol, r.Status.String()))
+	buffer.WriteString("Headers:\n")
 	for k, v := range r.Headers {
-		buffer.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+		buffer.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 	}
-	buffer.WriteString(fmt.Sprintf("Body:\r\n%s", r.Body))
+
+	if contentType, ok := r.Headers["Content-Type"]; ok {
+		if fastContains(contentType, "image") {
+			return buffer.String()
+		} else if fastContains(contentType, "x-dmap-tagged") {
+			return buffer.String()
+		}
+		buffer.WriteString(fmt.Sprintf("Body:\n%s", r.Body))
+	}
 	return buffer.String()
 }
 
@@ -142,11 +155,8 @@ func getStatus(status int) (Status, error) {
 	return s, nil
 }
 
-func fastSearch(str string, substr string) bool {
-	m := search.New(language.English, search.IgnoreCase)
-	start, _ := m.IndexString(str, substr)
-	if start == -1 {
-		return false
-	}
-	return true
+func fastContains(str string, substr string) bool {
+
+	start, _ := search.New(language.English, search.IgnoreCase).IndexString(str, substr)
+	return start != -1
 }
