@@ -113,19 +113,16 @@ func (s *Session) StartReceiving() error {
 }
 
 // StartSending starts a session for sending data
-func (s *Session) StartSending() error {
-	conn, err := net.Dial("udp", fmt.Sprintf("%s:%d", s.RemotePorts.Address, s.RemotePorts.Data))
-	if err != nil {
-		return err
+func (s *Session) StartSending() (err error) {
+	if s.dataConn, err = net.Dial("udp", fmt.Sprintf("%s:%d", s.RemotePorts.Address, s.RemotePorts.Data)); err != nil {
+		return fmt.Errorf("error dialing '%s:%d': %w", s.RemotePorts.Address, s.RemotePorts.Data, err)
 	}
-	// keep track of the actual connection so we close it later
-	s.dataConn = conn
-	// start listening for audio data
+
+	// keep track of the actual connection, so we can close it later.
 	log.Println("Session started.  Will start sending packets")
-	go func() {
-		for pkt := range s.DataChan {
-			conn.Write(pkt)
-		}
-	}()
 	return nil
+}
+
+func (s *Session) DataConn() net.Conn {
+	return s.dataConn
 }
