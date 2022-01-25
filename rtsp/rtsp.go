@@ -41,12 +41,15 @@ func (r *Request) String() string {
 		buffer.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 	}
 	if contentType, ok := r.Headers["Content-Type"]; ok {
-		if fastContains(contentType, "image") {
+		switch {
+		case fastContains(contentType, "image"):
+			fallthrough
+		case fastContains(contentType, "x-dmap-tagged"):
+			buffer.WriteString("Body: <omitted due to length>")
 			return buffer.String()
-		} else if fastContains(contentType, "x-dmap-tagged") {
-			return buffer.String()
+		default:
+			buffer.WriteString(fmt.Sprintf("Body: \n %s", r.Body))
 		}
-		buffer.WriteString(fmt.Sprintf("Body:\n%s", r.Body))
 	}
 	return buffer.String()
 }
@@ -60,12 +63,15 @@ func (r *Response) String() string {
 	}
 
 	if contentType, ok := r.Headers["Content-Type"]; ok {
-		if fastContains(contentType, "image") {
+		switch {
+		case fastContains(contentType, "image"):
+			fallthrough
+		case fastContains(contentType, "x-dmap-tagged"):
+			buffer.WriteString("Body: <omitted due to length>")
 			return buffer.String()
-		} else if fastContains(contentType, "x-dmap-tagged") {
-			return buffer.String()
+		default:
+			buffer.WriteString(fmt.Sprintf("Body: \n %s", r.Body))
 		}
-		buffer.WriteString(fmt.Sprintf("Body:\n%s", r.Body))
 	}
 	return buffer.String()
 }
